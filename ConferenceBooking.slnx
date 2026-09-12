@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="ConferenceBooking.API/ConferenceBooking.API.csproj" />
+  <Project Path="ConferenceBooking.Application/ConferenceBooking.Application.csproj" />
+  <Project Path="ConferenceBooking.Domain/ConferenceBooking.Domain.csproj" />
+  <Project Path="ConferenceBooking.Infrastructure/ConferenceBooking.Infrastructure.csproj" />
+  <Project Path="ConferenceBooking.Tests/ConferenceBooking.Tests.csproj" />
+</Solution>
