@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics.CodeAnalysis;
+using ConferenceBooking.Domain.Exceptions;
 
 namespace ConferenceBooking.Domain.Rooms;
 
@@ -60,18 +61,16 @@ public class Room
 
     public Amenity AddAmenity(string name, decimal price)
     {
-        var trimmedName = name?.Trim();
-
-        if (_amenities.Any(a => a.IsActive && string.Equals(a.Name, trimmedName, StringComparison.OrdinalIgnoreCase)))
-            throw new ArgumentException($"Послуга «{trimmedName}» вже додана до залу.", nameof(name));
-
         var amenity = new Amenity(name, price);
+
+        if (_amenities.Any(a => a.IsActive && string.Equals(a.Name, amenity.Name, StringComparison.OrdinalIgnoreCase)))
+            throw new ArgumentException($"Послуга «{amenity.Name}» вже додана до залу.", nameof(name));
+
         _amenities.Add(amenity);
 
         return amenity;
     }
 
-    
     public void UpdateAmenity(Guid amenityId, string name, decimal price)
     {
         var amenity = RequireAmenity(amenityId);
@@ -95,7 +94,20 @@ public class Room
         DeletedAtUtc = DateTime.UtcNow;
     }
     private Amenity RequireAmenity(Guid amenityId) =>
-        _amenities.FirstOrDefault(a => a.Id == amenityId) ?? throw new ArgumentException($"Послугу {amenityId} не знайдено.", nameof(amenityId));
+        _amenities.FirstOrDefault(a => a.Id == amenityId)
+        ?? throw new NotFoundException("Послугу", amenityId);
+
+    public Amenity RequireActiveAmenity(Guid amenityId)
+    {
+        var amenity = RequireAmenity(amenityId);
+
+        if (!amenity.IsActive)
+            throw new DomainException("amenity_inactive", $"Послуга «{amenity.Name}» більше не доступна.");
+
+        return amenity;
+    }
+
+
 
 
 }

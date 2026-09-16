@@ -1,4 +1,5 @@
 ﻿using ConferenceBooking.Domain.Common;
+using ConferenceBooking.Domain.Exceptions;
 using ConferenceBooking.Domain.Rooms;
 
 namespace ConferenceBooking.Domain.Pricing;
@@ -35,13 +36,13 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
     private void EnsureWithinWorkingHours(TimeRange period)
     {
         if (!period.IsWithinSingleDay)
-            throw new ArgumentException("Бронювання не може переходити через добу.");
+            throw new PricingException("Бронювання не може переходити через добу.");
 
         var start = TimeOnly.FromDateTime(period.Start);
         var end = TimeOnly.FromDateTime(period.End);
 
         if (start < _options.OpensAt || end > _options.ClosesAt)
-            throw new ArgumentException($"Зали доступні з {_options.OpensAt:HH\\:mm} до {_options.ClosesAt:HH\\:mm}.");
+            throw new PricingException($"Зали доступні з {_options.OpensAt:HH\\:mm} до {_options.ClosesAt:HH\\:mm}.");
     }
 
     private void EnsureAllowedDuration(TimeRange period)
@@ -49,12 +50,17 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
         var minutes = (int)period.Duration.TotalMinutes;
 
         if (minutes < _options.MinimumBookingMinutes)
-            throw new ArgumentException($"Мінімальна тривалість — {_options.MinimumBookingMinutes} хв.");
+            throw new PricingException($"Мінімальна тривалість — {_options.MinimumBookingMinutes} хв.");
 
         if (minutes % _options.BookingStepMinutes != 0)
-            throw new ArgumentException($"Тривалість має бути кратною {_options.BookingStepMinutes} хв.");
+            throw new PricingException($"Тривалість має бути кратною {_options.BookingStepMinutes} хв.");
     }
 
+    /// <summary>
+    /// Ріже інтервал по всіх межах тарифних вікон, що потрапляють усередину.
+    /// SortedSet сам сортує точки й прибирає дублікати — інакше на стику вікон
+    /// (18:00 — кінець стандартних і початок вечірніх) виник би відрізок нульової довжини.
+    /// </summary>
     private IEnumerable<TimeRange> BuildSegments(TimeRange period)
     {
         var day = period.Start.Date;
@@ -62,14 +68,8 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
 
         foreach (var window in _options.RateWindows)
         {
-            var windowStart = day + window.Start.ToTimeSpan();
-            var windowEnd = day + window.End.ToTimeSpan();
-
-            if (windowStart > period.Start && windowStart < period.End)
-                boundaries.Add(windowStart);
-
-            if (windowEnd > period.Start && windowEnd < period.End)
-                boundaries.Add(windowEnd);
+            AddIfInside(boundaries, day + window.Start.ToTimeSpan(), period);
+            AddIfInside(boundaries, day + window.End.ToTimeSpan(), period);
         }
 
         var points = boundaries.ToArray();
@@ -78,7 +78,12 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
             yield return new TimeRange(points[i], points[i + 1]);
     }
 
-
+    /// <summary>
+    /// Тариф визначаємо за серединою відрізка: відрізок за побудовою не перетинає меж,
+    /// тож будь-яка внутрішня точка однозначно ідентифікує вікно.
+    /// За накладання вікон виграє більший Priority — так пікові години
+    /// перебивають стандартні, всередині яких вони лежать.
+    /// </summary>
     private RateWindow ResolveWindow(TimeRange segment)
     {
         var midpoint = TimeOnly.FromDateTime(segment.Start.AddTicks(segment.Duration.Ticks / 2));
@@ -87,15 +92,21 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
                    .Where(w => w.Contains(midpoint))
                    .OrderByDescending(w => w.Priority)
                    .FirstOrDefault()
-               ?? throw new ArgumentException($"Для часу {midpoint:HH\\:mm} не налаштовано тариф.");
+               ?? throw new PricingException($"Для часу {midpoint:HH\\:mm} не налаштовано тариф.");
     }
-
 
     private PriceSegment ToPriceSegment(decimal basePricePerHour, TimeRange segment)
     {
         var window = ResolveWindow(segment);
-        var hours = (decimal)segment.Duration.TotalHours;
+        var hours = segment.TotalHours;
         var amount = decimal.Round(basePricePerHour * hours * window.Multiplier, 2, MidpointRounding.AwayFromZero);
+
         return new PriceSegment(window.Name, segment.Start, segment.End, hours, window.Multiplier, amount);
+    }
+
+    private static void AddIfInside(SortedSet<DateTime> boundaries, DateTime candidate, TimeRange period)
+    {
+        if (candidate > period.Start && candidate < period.End)
+            boundaries.Add(candidate);
     }
 }

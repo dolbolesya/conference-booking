@@ -1,6 +1,7 @@
 using ConferenceBooking.Domain.Common;
 using ConferenceBooking.Domain.Pricing;
 using ConferenceBooking.Domain.Rooms;
+using ConferenceBooking.Domain.Exceptions;
 
 namespace ConferenceBooking.Tests.Pricing;
 
@@ -70,7 +71,8 @@ public class TimeBasedPricingPolicyTests
     [Fact]
     public void Calculate_Throws_WhenOutsideWorkingHours()
     {
-        Assert.Throws<ArgumentException>(() => RoomChargeFor(Period(5, 7)));
+        Assert.Throws<PricingException>(() => RoomChargeFor(Period(5, 7)));
+
     }
 
     [Fact]
@@ -80,6 +82,6 @@ public class TimeBasedPricingPolicyTests
             new DateTime(2026, 9, 15, 10, 0, 0),
             new DateTime(2026, 9, 15, 10, 45, 0));
 
-        Assert.Throws<ArgumentException>(() => RoomChargeFor(period));
+        Assert.Throws<PricingException>(() => RoomChargeFor(period));
     }
 }
