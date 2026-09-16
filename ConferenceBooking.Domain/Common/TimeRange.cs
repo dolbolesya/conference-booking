@@ -35,4 +35,6 @@ public readonly record struct TimeRange
     public bool IsWithinSingleDay => Start.Date == End.AddTicks(-1).Date;
 
     public override string ToString() => $"{Start:dd.MM.yyyy HH:mm}–{End:HH:mm}";
+
+    public static TimeRange FromDuration(DateTime start, TimeSpan duration) => new(start, start + duration);
 }
