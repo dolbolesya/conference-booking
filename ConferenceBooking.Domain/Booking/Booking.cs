@@ -38,6 +38,12 @@ public sealed class Booking
         _amenities.AddRange(price.Amenities.Select(a => new BookedAmenity(a.AmenityId, a.Name, a.Price)));
     }
 
+    /// <summary>Конструктор для EF Core. Заповнення відбувається через рефлексію.</summary>
+    private Booking()
+    {
+        CustomerName = string.Empty;
+        CustomerEmail = string.Empty;
+    }
     public Guid Id { get; private set; }
     public Guid RoomId { get; private set; }
     public DateTime StartsAt { get; private set; }

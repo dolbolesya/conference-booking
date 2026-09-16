@@ -16,6 +16,8 @@ public class Amenity
         IsActive = true;
     }
 
+    private Amenity() => Name = string.Empty;
+
     public Guid Id { get; private set; }
     public string Name { get; private set; }
     public decimal Price { get; private set; }

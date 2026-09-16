@@ -14,6 +14,7 @@ public sealed class BookedAmenity
         Price = price;
     }
 
+    private BookedAmenity() => Name = string.Empty;
     public Guid Id { get; private set; }
     public Guid BookingId { get; private set; }
     public Guid AmenityId { get; private set; }
