@@ -1,10 +1,13 @@
 ﻿using ConferenceBooking.Application.Reports;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConferenceBooking.API.Controllers;
 
 [ApiController]
 [Route("api/reports")]
+[Authorize(Roles = "Admin")]
+
 public sealed class ReportsController : ControllerBase
 {
     private readonly IReportService _reports;

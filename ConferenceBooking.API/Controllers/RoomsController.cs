@@ -1,10 +1,13 @@
 ﻿using ConferenceBooking.Application.Rooms;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConferenceBooking.API.Controllers;
 
 [ApiController]
 [Route("api/rooms")]
+[Authorize(Roles = "Admin")]
+
 public sealed class RoomsController : ControllerBase
 {
     private readonly IRoomService _rooms;
@@ -13,11 +16,14 @@ public sealed class RoomsController : ControllerBase
 
     /// <summary>Список усіх доступних залів.</summary>
     [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<IReadOnlyList<RoomDto>>> List(CancellationToken ct) =>
         Ok(await _rooms.ListAsync(ct));
 
     /// <summary>Зал за ідентифікатором.</summary>
     [HttpGet("{roomId:guid}")]
+    [AllowAnonymous]
+
     public async Task<ActionResult<RoomDto>> Get(Guid roomId, CancellationToken ct) =>
         Ok(await _rooms.GetAsync(roomId, ct));
 

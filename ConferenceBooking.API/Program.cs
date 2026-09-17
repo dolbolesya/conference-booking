@@ -2,9 +2,12 @@ using ConferenceBooking.API.Infrastructure;
 using ConferenceBooking.Application;
 using ConferenceBooking.Infrastructure;
 using ConferenceBooking.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using System.Reflection;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.RateLimiting;
 
@@ -31,6 +34,24 @@ builder.Services.AddSwaggerGen(options =>
         Description = "API для управління конференц-залами, бронюваннями та розрахунком вартості оренди."
     });
 
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Введіть токен, отриманий через /api/auth/token."
+    });
+
+    options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecuritySchemeReference("Bearer"),
+            new List<string>()
+        }
+    });
+
     var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
 });
@@ -53,11 +74,35 @@ builder.Services.AddRateLimiter(options =>
     // і блокує зал, тому перебір тут дорожчий для бізнесу.
     options.AddFixedWindowLimiter("bookings", limiter =>
     {
-        limiter.PermitLimit = 2;
+        limiter.PermitLimit = 10;
         limiter.Window = TimeSpan.FromMinutes(1);
         limiter.QueueLimit = 0;
     });
 });
+
+builder.Services.AddSingleton<TokenService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        var jwt = builder.Configuration.GetSection("Jwt");
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwt["Issuer"],
+            ValidAudience = jwt["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!)),
+
+            // За замовчуванням — 5 хвилин: токен лишався б чинним ще довго після завершення.
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -65,8 +110,8 @@ await app.Services.InitializeAsync();
 
 app.UseExceptionHandler();
 
-// UseRouting має стояти до UseRateLimiter: лімітер читає політику з метаданих
-// ендпоінта, а ендпоінт визначається саме на етапі маршрутизації.
+// UseRouting має стояти до UseRateLimiter та UseAuthorization: обидва читають
+// метадані ендпоінта, а ендпоінт визначається саме на етапі маршрутизації.
 app.UseRouting();
 app.UseRateLimiter();
 
@@ -79,6 +124,9 @@ if (app.Environment.IsDevelopment())
         options.DocumentTitle = "Conference Booking API";
     });
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseHttpsRedirection();
 
