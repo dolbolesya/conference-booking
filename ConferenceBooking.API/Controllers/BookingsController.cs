@@ -1,5 +1,6 @@
 ﻿using ConferenceBooking.Application.Bookings;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ConferenceBooking.API.Controllers;
 
@@ -24,6 +25,7 @@ public sealed class BookingsController : ControllerBase
 
     /// <summary>Бронювання залу з розрахунком загальної вартості.</summary>
     [HttpPost]
+    [EnableRateLimiting("bookings")]
     public async Task<ActionResult<BookingDto>> Create(CreateBookingRequest request, CancellationToken ct)
     {
         var booking = await _bookings.CreateAsync(request, ct);
