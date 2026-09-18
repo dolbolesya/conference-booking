@@ -9,6 +9,8 @@ namespace ConferenceBooking.Tests.Bookings;
 public class BookingTests
 {
     private static readonly DateTime Now = new(2026, 9, 15, 8, 0, 0);
+    private static readonly Guid OwnerId = Guid.CreateVersion7();
+    private static readonly Guid StrangerId = Guid.CreateVersion7();
 
     private readonly TimeBasedPricingPolicy _policy = new(new PricingOptions());
 
@@ -23,8 +25,7 @@ public class BookingTests
         TimeRange period,
         int attendees = 10,
         IReadOnlyCollection<Guid>? amenityIds = null) =>
-        Booking.Create(room, period, attendees, "Іван Петренко", "ivan@example.com",
-            amenityIds ?? [], _policy, Now);
+        Booking.Create(room, period, attendees, OwnerId, amenityIds ?? [], _policy, Now);
 
     [Fact]
     public void Create_CalculatesTotalPrice_FromRoomAndAmenities()
@@ -37,6 +38,23 @@ public class BookingTests
         Assert.Equal(8600m, booking.RoomCharge);
         Assert.Equal(500m, booking.AmenitiesCharge);
         Assert.Equal(9100m, booking.TotalPrice);
+    }
+
+    [Fact]
+    public void Create_AssignsOwner()
+    {
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
+
+        Assert.Equal(OwnerId, booking.UserId);
+    }
+
+    [Fact]
+    public void Create_Throws_WhenUserIdIsEmpty()
+    {
+        var room = CreateRoom();
+
+        Assert.Throws<ArgumentException>(() =>
+            Booking.Create(room, Tomorrow(10, 12), 10, Guid.Empty, [], _policy, Now));
     }
 
     [Fact]
@@ -114,10 +132,35 @@ public class BookingTests
     }
 
     [Fact]
+    public void EnsureOwnedBy_DoesNotThrow_ForOwner()
+    {
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
+
+        booking.EnsureOwnedBy(OwnerId, isAdmin: false);
+    }
+
+    [Fact]
+    public void EnsureOwnedBy_Throws_ForStranger()
+    {
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
+
+        var exception = Assert.Throws<DomainException>(() => booking.EnsureOwnedBy(StrangerId, isAdmin: false));
+
+        Assert.Equal("access_denied", exception.Code);
+    }
+
+    [Fact]
+    public void EnsureOwnedBy_DoesNotThrow_ForAdmin()
+    {
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
+
+        booking.EnsureOwnedBy(StrangerId, isAdmin: true);
+    }
+
+    [Fact]
     public void Cancel_SetsStatusAndTimestamp()
     {
-        var room = CreateRoom();
-        var booking = CreateBooking(room, Tomorrow(10, 12));
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
 
         booking.Cancel(Now);
 
@@ -129,8 +172,7 @@ public class BookingTests
     [Fact]
     public void Cancel_Throws_WhenBookingAlreadyStarted()
     {
-        var room = CreateRoom();
-        var booking = CreateBooking(room, Tomorrow(10, 12));
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
 
         var afterStart = new DateTime(2026, 9, 16, 11, 0, 0);
 
@@ -142,8 +184,7 @@ public class BookingTests
     [Fact]
     public void Cancel_Throws_WhenAlreadyCancelled()
     {
-        var room = CreateRoom();
-        var booking = CreateBooking(room, Tomorrow(10, 12));
+        var booking = CreateBooking(CreateRoom(), Tomorrow(10, 12));
         booking.Cancel(Now);
 
         var exception = Assert.Throws<DomainException>(() => booking.Cancel(Now));
