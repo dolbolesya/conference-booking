@@ -1,7 +1,7 @@
 ﻿namespace ConferenceBooking.Domain.Common;
 
 /// <summary>
-/// Проміжок часу [Start, End) — кінець не включається.
+/// Проміжок часу [Start, End) -кінець не включається.
 /// Завдяки цьому бронювання 10:00–12:00 і 12:00–14:00 не конфліктують.
 /// </summary>
 public readonly record struct TimeRange

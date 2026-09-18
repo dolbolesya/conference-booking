@@ -15,4 +15,6 @@ public interface IBookingService
     Task<BookingDto> GetAsync(Guid bookingId, CancellationToken ct = default);
 
     Task CancelAsync(Guid bookingId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<BookingDto>> GetMyBookingsAsync(CancellationToken ct = default);
 }

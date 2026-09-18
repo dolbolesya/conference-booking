@@ -1,4 +1,5 @@
-﻿using ConferenceBooking.Domain.Bookings;
+using ConferenceBooking.Domain.Bookings;
+using ConferenceBooking.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -12,8 +13,12 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.HasKey(b => b.Id);
 
-        builder.Property(b => b.CustomerName).IsRequired().HasMaxLength(200);
-        builder.Property(b => b.CustomerEmail).IsRequired().HasMaxLength(320);
+        builder.HasIndex(b => b.UserId);
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(b => b.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(b => b.RoomCharge).HasPrecision(18, 2);
         builder.Property(b => b.AmenitiesCharge).HasPrecision(18, 2);
@@ -21,7 +26,7 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
 
         builder.Property(b => b.Status).HasConversion<int>();
 
-        // Обчислювана властивість — у БД її немає.
+        // Обчислювана властивість -у БД її немає.
         builder.Ignore(b => b.Period);
         builder.Ignore(b => b.IsActive);
 

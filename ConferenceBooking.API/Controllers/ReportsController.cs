@@ -32,7 +32,7 @@ public sealed class ReportsController : ControllerBase
         [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct) =>
         Ok(await _reports.GetAmenityPopularityAsync(new ReportPeriodRequest(from, to), ct));
 
-    /// <summary>Розподіл бронювань за годинами доби — перевірка коректності пікових годин.</summary>
+    /// <summary>Розподіл бронювань за годинами доби -перевірка коректності пікових годин.</summary>
     [HttpGet("hourly")]
     public async Task<ActionResult<IReadOnlyList<HourlyDistributionDto>>> Hourly(
         [FromQuery] DateTime from, [FromQuery] DateTime to, CancellationToken ct) =>

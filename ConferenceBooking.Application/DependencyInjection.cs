@@ -1,4 +1,5 @@
-﻿using ConferenceBooking.Application.Bookings;
+﻿using ConferenceBooking.Application.Auth;
+using ConferenceBooking.Application.Bookings;
 using ConferenceBooking.Application.Reports;
 using ConferenceBooking.Application.Rooms;
 using FluentValidation;
@@ -12,8 +13,10 @@ public static class DependencyInjection
     {
         services.AddScoped<IRoomService, RoomService>();
         services.AddScoped<IBookingService, BookingService>();
-        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddScoped<IReportService, ReportService>();
+        services.AddScoped<IAuthService, AuthService>();
+
+        services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
 
         return services;
     }

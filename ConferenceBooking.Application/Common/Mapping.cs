@@ -8,7 +8,7 @@ namespace ConferenceBooking.Application.Common;
 
 /// <summary>
 /// Ручний мапінг замість AutoMapper: менше магії, видно точно, які поля
-/// залишають межі системи — це важливо для безпеки.
+/// залишають межі системи - це важливо для безпеки.
 /// </summary>
 public static class Mapping
 {
@@ -40,11 +40,10 @@ public static class Mapping
     public static BookingDto ToDto(this Booking booking) => new(
         booking.Id,
         booking.RoomId,
+        booking.UserId,
         booking.StartsAt,
         booking.EndsAt,
         booking.Attendees,
-        booking.CustomerName,
-        booking.CustomerEmail,
         booking.Status.ToString(),
         booking.RoomCharge,
         booking.AmenitiesCharge,

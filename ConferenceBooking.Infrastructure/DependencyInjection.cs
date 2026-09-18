@@ -9,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace ConferenceBooking.Infrastructure;
 
 /// <summary>
-/// Реєстрація інфраструктури одним викликом — Program.cs не знає про EF Core
+/// Реєстрація інфраструктури одним викликом -Program.cs не знає про EF Core
 /// і конкретні реалізації.
 /// </summary>
 public static class DependencyInjection
@@ -28,6 +28,9 @@ public static class DependencyInjection
         services.AddSingleton(sp =>
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<PricingOptions>>().Value);
         services.AddSingleton<IPricingPolicy, TimeBasedPricingPolicy>();
+
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddScoped<IJwtService, JwtService>();
 
         return services;
     }

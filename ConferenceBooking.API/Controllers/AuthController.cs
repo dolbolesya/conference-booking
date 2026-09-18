@@ -1,29 +1,28 @@
-﻿using ConferenceBooking.API.Infrastructure;
+﻿using ConferenceBooking.Application.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace ConferenceBooking.API.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[AllowAnonymous]
 public sealed class AuthController : ControllerBase
 {
-    private readonly TokenService _tokens;
+    private readonly IAuthService _auth;
 
-    public AuthController(TokenService tokens) => _tokens = tokens;
+    public AuthController(IAuthService auth) => _auth = auth;
 
-    /// <summary>
-    /// Отримання JWT для доступу до API.
-    /// Демонстраційні облікові дані: admin/admin-secret, client/client-secret.
-    /// </summary>
-    [HttpPost("token")]
-    public ActionResult<TokenResponse> Token(TokenRequest request)
-    {
-        var token = _tokens.Issue(request);
+    /// <summary>Реєстрація нового користувача. Створений обліковий запис має роль Client.</summary>
+    [HttpPost("register")]
+    [EnableRateLimiting("auth")]
+    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken ct) =>
+        Ok(await _auth.RegisterAsync(request, ct));
 
-        // Не уточнюємо, що саме невірно — ідентифікатор чи секрет:
-        // це дало б зловмиснику змогу перебирати клієнтів.
-        return token is null
-            ? Unauthorized(new ProblemDetails { Title = "Невірні облікові дані", Status = 401 })
-            : Ok(token);
-    }
+    /// <summary>Вхід у систему. Повертає JWT для доступу до захищених ендпоінтів.</summary>
+    [HttpPost("login")]
+    [EnableRateLimiting("auth")]
+    public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken ct) =>
+        Ok(await _auth.LoginAsync(request, ct));
 }

@@ -14,12 +14,18 @@ public sealed class BookingService : IBookingService
     private readonly IApplicationDbContext _db;
     private readonly IPricingPolicy _pricingPolicy;
     private readonly IDateTimeProvider _clock;
+    private readonly ICurrentUser _currentUser;
 
-    public BookingService(IApplicationDbContext db, IPricingPolicy pricingPolicy, IDateTimeProvider clock)
+    public BookingService(
+        IApplicationDbContext db,
+        IPricingPolicy pricingPolicy,
+        IDateTimeProvider clock,
+        ICurrentUser currentUser)
     {
         _db = db;
         _pricingPolicy = pricingPolicy;
         _clock = clock;
+        _currentUser = currentUser;
     }
 
     public async Task<IReadOnlyList<AvailableRoomDto>> FindAvailableRoomsAsync(
@@ -56,6 +62,7 @@ public sealed class BookingService : IBookingService
 
     public async Task<BookingDto> CreateAsync(CreateBookingRequest request, CancellationToken ct = default)
     {
+        var userId = RequireUserId();
         var period = BuildPeriod(request.StartsAt, request.DurationMinutes);
 
         await using var transaction = await _db.BeginSerializableTransactionAsync(ct);
@@ -68,8 +75,7 @@ public sealed class BookingService : IBookingService
             room,
             period,
             request.Attendees,
-            request.CustomerName,
-            request.CustomerEmail,
+            userId,
             request.AmenityIds ?? [],
             _pricingPolicy,
             _clock.Now);
@@ -90,7 +96,23 @@ public sealed class BookingService : IBookingService
             .FirstOrDefaultAsync(b => b.Id == bookingId, ct)
             ?? throw new NotFoundException("Бронювання", bookingId);
 
+        booking.EnsureOwnedBy(RequireUserId(), _currentUser.IsAdmin);
+
         return booking.ToDto();
+    }
+
+    public async Task<IReadOnlyList<BookingDto>> GetMyBookingsAsync(CancellationToken ct = default)
+    {
+        var userId = RequireUserId();
+
+        var bookings = await _db.Bookings
+            .AsNoTracking()
+            .Include(b => b.Amenities)
+            .Where(b => b.UserId == userId)
+            .OrderByDescending(b => b.StartsAt)
+            .ToListAsync(ct);
+
+        return bookings.Select(b => b.ToDto()).ToList();
     }
 
     public async Task CancelAsync(Guid bookingId, CancellationToken ct = default)
@@ -98,6 +120,7 @@ public sealed class BookingService : IBookingService
         var booking = await _db.Bookings.FirstOrDefaultAsync(b => b.Id == bookingId, ct)
             ?? throw new NotFoundException("Бронювання", bookingId);
 
+        booking.EnsureOwnedBy(RequireUserId(), _currentUser.IsAdmin);
         booking.Cancel(_clock.Now);
 
         await _db.SaveChangesAsync(ct);
@@ -129,11 +152,15 @@ public sealed class BookingService : IBookingService
         }
         catch (DomainException ex)
         {
-            // Зал вільний, але інтервал не тарифікується (напр. поза робочими годинами) —
+            // Зал вільний, але інтервал не тарифікується (напр. поза робочими годинами) -
             // повертаємо причину, а не ховаємо зал від клієнта.
             return new AvailableRoomDto(room.Id, room.Name, room.Capacity, room.BasePricePerHour, null, ex.Message);
         }
     }
+
+    private Guid RequireUserId() =>
+        _currentUser.UserId
+        ?? throw new DomainException("unauthenticated", "Потрібна автентифікація.");
 
     private async Task<Room> LoadRoomAsync(Guid roomId, CancellationToken ct) =>
         await _db.Rooms.Include(r => r.Amenities).FirstOrDefaultAsync(r => r.Id == roomId, ct)

@@ -134,7 +134,7 @@ public sealed class ReportService : IReportService
             .GroupBy(b => b.StartsAt.Hour)
             .ToDictionary(g => g.Key, g => (Count: g.Count(), Revenue: g.Sum(b => b.TotalPrice)));
 
-        // Повертаємо всі робочі години, включно з порожніми — інакше на графіку
+        // Повертаємо всі робочі години, включно з порожніми -інакше на графіку
         // будуть провали, і не видно, що зал у цей час просто не бронюють.
         return Enumerable
             .Range(_pricing.OpensAt.Hour, _pricing.ClosesAt.Hour - _pricing.OpensAt.Hour)

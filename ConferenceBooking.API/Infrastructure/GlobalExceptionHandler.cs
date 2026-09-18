@@ -6,7 +6,7 @@ namespace ConferenceBooking.API.Infrastructure;
 
 /// <summary>
 /// Перетворює винятки на ProblemDetails (RFC 9457). Клієнт отримує зрозумілий код
-/// помилки, але ніколи — стек викликів чи деталі реалізації.
+/// помилки, але ніколи -стек викликів чи деталі реалізації.
 /// </summary>
 public sealed class GlobalExceptionHandler : IExceptionHandler
 {
@@ -48,6 +48,10 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         NotFoundException => (StatusCodes.Status404NotFound, "Ресурс не знайдено"),
         BookingConflictException => (StatusCodes.Status409Conflict, "Конфлікт бронювання"),
         PricingException => (StatusCodes.Status422UnprocessableEntity, "Неприпустимі умови бронювання"),
+        DomainException { Code: "access_denied" } => (StatusCodes.Status403Forbidden, "Доступ заборонено"),
+        DomainException { Code: "unauthenticated" } => (StatusCodes.Status401Unauthorized, "Потрібна автентифікація"),
+        DomainException { Code: "invalid_credentials" } => (StatusCodes.Status401Unauthorized, "Помилка автентифікації"),
+        DomainException { Code: "email_taken" } => (StatusCodes.Status409Conflict, "Конфлікт даних"),
         DomainException => (StatusCodes.Status422UnprocessableEntity, "Порушення бізнес-правила"),
         ArgumentException => (StatusCodes.Status400BadRequest, "Некоректні дані запиту"),
         _ => (StatusCodes.Status500InternalServerError, "Внутрішня помилка сервера")

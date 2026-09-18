@@ -18,15 +18,6 @@ public sealed class CreateBookingRequestValidator : AbstractValidator<CreateBook
 
         RuleFor(x => x.Attendees)
             .GreaterThan(0).WithMessage("Кількість учасників має бути більшою за нуль.");
-
-        RuleFor(x => x.CustomerName)
-            .NotEmpty().WithMessage("Ім'я замовника обов'язкове.")
-            .MaximumLength(200);
-
-        RuleFor(x => x.CustomerEmail)
-            .NotEmpty().WithMessage("Електронна адреса обов'язкова.")
-            .EmailAddress().WithMessage("Некоректна електронна адреса.")
-            .MaximumLength(320);
     }
 }
 

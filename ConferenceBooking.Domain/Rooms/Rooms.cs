@@ -4,7 +4,7 @@ using ConferenceBooking.Domain.Exceptions;
 namespace ConferenceBooking.Domain.Rooms;
 
 /// <summary>
-/// Конференц-зал — агрегат. Послуги не існують поза залом,
+/// Конференц-зал -агрегат. Послуги не існують поза залом,
 /// тому змінюються лише через методи цього класу.
 /// </summary>
 public class Room

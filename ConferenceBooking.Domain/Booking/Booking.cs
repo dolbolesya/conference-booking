@@ -6,7 +6,7 @@ using ConferenceBooking.Domain.Rooms;
 namespace ConferenceBooking.Domain.Bookings;
 
 /// <summary>
-/// Бронювання — агрегат. Усі інваріанти, які перевіряються без звернення до сховища,
+/// Бронювання - агрегат. Усі інваріанти, які перевіряються без звернення до сховища,
 /// живуть тут. Перевірка перетину з чужими бронями потребує запиту до БД
 /// і виконується в прикладному шарі під транзакцією.
 /// </summary>
@@ -14,21 +14,22 @@ public sealed class Booking
 {
     private readonly List<BookedAmenity> _amenities = new();
 
+    /// <summary>Конструктор для EF Core. Заповнення відбувається через рефлексію.</summary>
+    private Booking() { }
+
     private Booking(
         Room room,
         TimeRange period,
         int attendees,
-        string customerName,
-        string customerEmail,
+        Guid userId,
         PriceBreakdown price)
     {
         Id = Guid.CreateVersion7();
         RoomId = room.Id;
+        UserId = userId;
         StartsAt = period.Start;
         EndsAt = period.End;
         Attendees = attendees;
-        CustomerName = customerName;
-        CustomerEmail = customerEmail;
         RoomCharge = price.RoomCharge;
         AmenitiesCharge = price.AmenitiesCharge;
         TotalPrice = price.Total;
@@ -38,19 +39,12 @@ public sealed class Booking
         _amenities.AddRange(price.Amenities.Select(a => new BookedAmenity(a.AmenityId, a.Name, a.Price)));
     }
 
-    /// <summary>Конструктор для EF Core. Заповнення відбувається через рефлексію.</summary>
-    private Booking()
-    {
-        CustomerName = string.Empty;
-        CustomerEmail = string.Empty;
-    }
     public Guid Id { get; private set; }
     public Guid RoomId { get; private set; }
+    public Guid UserId { get; private set; }
     public DateTime StartsAt { get; private set; }
     public DateTime EndsAt { get; private set; }
     public int Attendees { get; private set; }
-    public string CustomerName { get; private set; }
-    public string CustomerEmail { get; private set; }
     public decimal RoomCharge { get; private set; }
     public decimal AmenitiesCharge { get; private set; }
     public decimal TotalPrice { get; private set; }
@@ -72,8 +66,7 @@ public sealed class Booking
         Room room,
         TimeRange period,
         int attendees,
-        string customerName,
-        string customerEmail,
+        Guid userId,
         IReadOnlyCollection<Guid> amenityIds,
         IPricingPolicy pricingPolicy,
         DateTime now)
@@ -82,11 +75,8 @@ public sealed class Booking
         ArgumentNullException.ThrowIfNull(amenityIds);
         ArgumentNullException.ThrowIfNull(pricingPolicy);
 
-        if (string.IsNullOrWhiteSpace(customerName))
-            throw new ArgumentException("Ім'я замовника обов'язкове.", nameof(customerName));
-
-        if (string.IsNullOrWhiteSpace(customerEmail))
-            throw new ArgumentException("Електронна адреса замовника обов'язкова.", nameof(customerEmail));
+        if (userId == Guid.Empty)
+            throw new ArgumentException("Ідентифікатор користувача обов'язковий.", nameof(userId));
 
         if (room.IsDeleted)
             throw new DomainException("room_unavailable", $"Зал «{room.Name}» більше не здається в оренду.");
@@ -107,7 +97,17 @@ public sealed class Booking
         var amenities = amenityIds.Select(room.RequireActiveAmenity).ToList();
         var price = pricingPolicy.Calculate(room, period, amenities);
 
-        return new Booking(room, period, attendees, customerName.Trim(), customerEmail.Trim().ToLowerInvariant(), price);
+        return new Booking(room, period, attendees, userId, price);
+    }
+
+    /// <summary>
+    /// Керувати бронню може лише її власник або адміністратор. Перевірка живе в домені,
+    /// щоб її не можна було обійти з іншого сценарію.
+    /// </summary>
+    public void EnsureOwnedBy(Guid userId, bool isAdmin)
+    {
+        if (!isAdmin && UserId != userId)
+            throw new DomainException("access_denied", "Ви можете керувати лише власними бронюваннями.");
     }
 
     /// <summary>Скасування можливе лише до початку бронювання.</summary>

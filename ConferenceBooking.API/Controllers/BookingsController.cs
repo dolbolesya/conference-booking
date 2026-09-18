@@ -14,22 +14,20 @@ public sealed class BookingsController : ControllerBase
 
     public BookingsController(IBookingService bookings) => _bookings = bookings;
 
-    /// <summary>Пошук доступних залів на вказаний інтервал.</summary>
+    /// <summary>Пошук доступних залів на вказаний інтервал. Доступно без автентифікації.</summary>
     [HttpPost("availability")]
     [AllowAnonymous]
-
     public async Task<ActionResult<IReadOnlyList<AvailableRoomDto>>> FindAvailable(
         AvailabilityRequest request, CancellationToken ct) =>
         Ok(await _bookings.FindAvailableRoomsAsync(request, ct));
 
-    /// <summary>Розрахунок вартості без створення бронювання.</summary>
+    /// <summary>Розрахунок вартості без створення бронювання. Доступно без автентифікації.</summary>
     [HttpPost("quote")]
     [AllowAnonymous]
-
     public async Task<ActionResult<PriceQuoteDto>> Quote(QuoteRequest request, CancellationToken ct) =>
         Ok(await _bookings.GetQuoteAsync(request, ct));
 
-    /// <summary>Бронювання залу з розрахунком загальної вартості.</summary>
+    /// <summary>Бронювання залу. Замовник визначається за токеном.</summary>
     [HttpPost]
     [EnableRateLimiting("bookings")]
     public async Task<ActionResult<BookingDto>> Create(CreateBookingRequest request, CancellationToken ct)
@@ -39,12 +37,17 @@ public sealed class BookingsController : ControllerBase
         return CreatedAtAction(nameof(Get), new { bookingId = booking.Id }, booking);
     }
 
-    /// <summary>Бронювання за ідентифікатором.</summary>
+    /// <summary>Власні бронювання поточного користувача.</summary>
+    [HttpGet("my")]
+    public async Task<ActionResult<IReadOnlyList<BookingDto>>> My(CancellationToken ct) =>
+        Ok(await _bookings.GetMyBookingsAsync(ct));
+
+    /// <summary>Бронювання за ідентифікатором. Доступне власнику або адміністратору.</summary>
     [HttpGet("{bookingId:guid}")]
     public async Task<ActionResult<BookingDto>> Get(Guid bookingId, CancellationToken ct) =>
         Ok(await _bookings.GetAsync(bookingId, ct));
 
-    /// <summary>Скасування бронювання.</summary>
+    /// <summary>Скасування бронювання. Доступне власнику або адміністратору.</summary>
     [HttpDelete("{bookingId:guid}")]
     public async Task<IActionResult> Cancel(Guid bookingId, CancellationToken ct)
     {

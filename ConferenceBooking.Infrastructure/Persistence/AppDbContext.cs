@@ -1,6 +1,7 @@
-﻿using ConferenceBooking.Application.Abstractions;
+using ConferenceBooking.Application.Abstractions;
 using ConferenceBooking.Domain.Bookings;
 using ConferenceBooking.Domain.Rooms;
+using ConferenceBooking.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -12,6 +13,7 @@ public sealed class AppDbContext : DbContext, IApplicationDbContext
 
     public DbSet<Room> Rooms => Set<Room>();
     public DbSet<Booking> Bookings => Set<Booking>();
+    public DbSet<User> Users => Set<User>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

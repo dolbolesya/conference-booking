@@ -36,13 +36,15 @@ public sealed record AvailableRoomDto(
     PriceQuoteDto? Quote,
     string? QuoteError);
 
+/// <summary>
+/// Дані замовника не передаються в запиті - вони беруться з токена.
+/// Інакше будь-хто міг би створити бронь від чужого імені.
+/// </summary>
 public sealed record CreateBookingRequest(
     Guid RoomId,
     DateTime StartsAt,
     int DurationMinutes,
     int Attendees,
-    string CustomerName,
-    string CustomerEmail,
     IReadOnlyList<Guid>? AmenityIds);
 
 public sealed record QuoteRequest(
@@ -54,11 +56,10 @@ public sealed record QuoteRequest(
 public sealed record BookingDto(
     Guid Id,
     Guid RoomId,
+    Guid UserId,
     DateTime StartsAt,
     DateTime EndsAt,
     int Attendees,
-    string CustomerName,
-    string CustomerEmail,
     string Status,
     decimal RoomCharge,
     decimal AmenitiesCharge,

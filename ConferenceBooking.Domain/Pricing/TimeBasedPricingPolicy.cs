@@ -50,7 +50,7 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
         var minutes = (int)period.Duration.TotalMinutes;
 
         if (minutes < _options.MinimumBookingMinutes)
-            throw new PricingException($"Мінімальна тривалість — {_options.MinimumBookingMinutes} хв.");
+            throw new PricingException($"Мінімальна тривалість -{_options.MinimumBookingMinutes} хв.");
 
         if (minutes % _options.BookingStepMinutes != 0)
             throw new PricingException($"Тривалість має бути кратною {_options.BookingStepMinutes} хв.");
@@ -58,8 +58,8 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
 
     /// <summary>
     /// Ріже інтервал по всіх межах тарифних вікон, що потрапляють усередину.
-    /// SortedSet сам сортує точки й прибирає дублікати — інакше на стику вікон
-    /// (18:00 — кінець стандартних і початок вечірніх) виник би відрізок нульової довжини.
+    /// SortedSet сам сортує точки й прибирає дублікати -інакше на стику вікон
+    /// (18:00 -кінець стандартних і початок вечірніх) виник би відрізок нульової довжини.
     /// </summary>
     private IEnumerable<TimeRange> BuildSegments(TimeRange period)
     {
@@ -81,7 +81,7 @@ public sealed class TimeBasedPricingPolicy : IPricingPolicy
     /// <summary>
     /// Тариф визначаємо за серединою відрізка: відрізок за побудовою не перетинає меж,
     /// тож будь-яка внутрішня точка однозначно ідентифікує вікно.
-    /// За накладання вікон виграє більший Priority — так пікові години
+    /// За накладання вікон виграє більший Priority -так пікові години
     /// перебивають стандартні, всередині яких вони лежать.
     /// </summary>
     private RateWindow ResolveWindow(TimeRange segment)

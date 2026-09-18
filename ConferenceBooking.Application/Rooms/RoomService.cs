@@ -68,7 +68,7 @@ public sealed class RoomService : IRoomService
 
     /// <summary>
     /// PUT-семантика: список послуг у запиті стає повним станом залу.
-    /// Знімок наявних робиться ДО змін — інакше щойно додані послуги
+    /// Знімок наявних робиться ДО змін -інакше щойно додані послуги
     /// одразу потрапили б під деактивацію.
     /// </summary>
     private static void SyncAmenities(Room room, IReadOnlyList<UpsertAmenityRequest> requested)

@@ -1,5 +1,6 @@
 using ConferenceBooking.API.Infrastructure;
 using ConferenceBooking.Application;
+using ConferenceBooking.Application.Abstractions;
 using ConferenceBooking.Infrastructure;
 using ConferenceBooking.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -15,6 +16,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, CurrentUser>();
 
 builder.Services.AddControllers(options => options.Filters.Add<ValidationFilter>());
 
@@ -41,7 +45,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Введіть токен, отриманий через /api/auth/token."
+        Description = "Токен, отриманий через /api/auth/login або /api/auth/register."
     });
 
     options.AddSecurityRequirement(_ => new OpenApiSecurityRequirement
@@ -60,7 +64,7 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    // Загальний ліміт на IP — базовий захист від перебору.
+    // Загальний ліміт на IP - базовий захист від перебору.
     options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -78,9 +82,15 @@ builder.Services.AddRateLimiter(options =>
         limiter.Window = TimeSpan.FromMinutes(1);
         limiter.QueueLimit = 0;
     });
-});
 
-builder.Services.AddSingleton<TokenService>();
+    // Вхід і реєстрація - улюблена ціль перебору паролів, тому ліміт найжорсткіший.
+    options.AddFixedWindowLimiter("auth", limiter =>
+    {
+        limiter.PermitLimit = 5;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -97,7 +107,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwt["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt["Key"]!)),
 
-            // За замовчуванням — 5 хвилин: токен лишався б чинним ще довго після завершення.
+            // За замовчуванням - 5 хвилин: токен лишався б чинним ще довго після завершення.
             ClockSkew = TimeSpan.FromSeconds(30)
         };
     });
